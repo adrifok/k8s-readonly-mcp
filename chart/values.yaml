@@ -1,0 +1,16 @@
+image:
+  repository: k8s-readonly-mcp
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# Secret created outside Helm, must contain key "token"
+authSecretName: k8s-readonly-mcp-auth
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
