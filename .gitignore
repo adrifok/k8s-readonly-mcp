@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.*
+*.dec.yaml
+*.agekey
+keys.txt
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+.terragrunt-cache/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Local tooling
+.claude/settings.local.json
