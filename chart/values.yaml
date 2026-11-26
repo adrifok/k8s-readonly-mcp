@@ -14,3 +14,13 @@ resources:
     memory: 128Mi
   limits:
     memory: 256Mi
+
+networkPolicy:
+  enabled: true
+  # NetworkPolicyPeer list allowed to call port 8000; empty = no in-cluster clients
+  allowFrom: []
+  # API server endpoint as seen after Service DNAT; minikube default below
+  # get it with: kubectl get endpointslice -n default -l kubernetes.io/service-name=kubernetes
+  apiServer:
+    cidr: 192.168.49.2/32
+    port: 8443

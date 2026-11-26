@@ -1,0 +1,27 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    {{- with .Values.networkPolicy.allowFrom }}
+    - from:
+        {{- toYaml . | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: 8000
+    {{- end }}
+  # only the Kubernetes API; in-cluster config uses the API IP directly, so no DNS needed
+  egress:
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.networkPolicy.apiServer.cidr }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.apiServer.port }}
+{{- end }}
