@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.12.2"
+      - name: Lint Python
+        run: uvx ruff@0.17.6 check src tests
+      - name: Unit tests
+        run: uv run --frozen pytest -q
+      - name: Lint Helm chart
+        run: helm lint ./chart
+      - name: Secrets must be SOPS-encrypted
+        run: |
+          shopt -s nullglob
+          for f in k8s/*secret*.yaml k8s/*secret*.yml; do
+            grep -q '^sops:' "$f" || { echo "::error file=$f::not SOPS-encrypted"; exit 1; }
+          done
+
+  image:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build -t "k8s-readonly-mcp:${GITHUB_SHA}" .
+      - name: Scan image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: k8s-readonly-mcp:${{ github.sha }}
+          version: v0.76.2
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan Dockerfile and chart config
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          version: v0.76.2
+          severity: CRITICAL,HIGH
+          exit-code: "1"
