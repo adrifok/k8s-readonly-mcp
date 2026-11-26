@@ -1,7 +1,7 @@
 [project]
 name = "k8s-readonly-mcp"
 version = "0.1.0"
-description = "MCP server"
+description = "Read-only Kubernetes MCP server"
 readme = "README.md"
 authors = [
     { name = "adrifok", email = "97637423+adrifok@users.noreply.github.com" }
