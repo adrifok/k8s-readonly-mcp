@@ -7,6 +7,12 @@ The interesting part is not the server, which is about 100 lines of Python on th
 official MCP SDK. It is how it runs: least-privilege RBAC, a restricted pod, token auth,
 and secrets that live encrypted in Git.
 
+Claude Code diagnosing a broken deployment through this server, without being able to
+touch it:
+
+![MCP tool calls](docs/mcp-tool-calls.png)
+![Diagnosis](docs/mcp-diagnosis.png)
+
 
 What an agent can ask
 
