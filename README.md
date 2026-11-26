@@ -47,6 +47,16 @@ Security model
   The Service is ClusterIP only, reached through kubectl port-forward. There is no
   Ingress or NodePort, because there is no TLS yet.
 
+  A NetworkPolicy denies all ingress except from the clients listed in
+  networkPolicy.allowFrom, and allows egress only to the Kubernetes API. A compromised
+  pod elsewhere cannot reach the endpoint, and a compromised MCP pod cannot reach
+  anything but the API. kubectl port-forward is not affected by it.
+
+  CI runs on every push and pull request: ruff, pytest, helm lint, a guard that fails
+  if any Secret under k8s/ is not SOPS-encrypted, an image build, and Trivy scans of
+  the image and of the Dockerfile and chart. Actions are pinned by commit SHA, base
+  images by digest, and Dependabot bumps them after a 7 day cooldown.
+
 
 Layout
 
@@ -55,6 +65,8 @@ Layout
   chart/                  Helm chart: ServiceAccount, RBAC, Deployment, Service
   k8s/secret.yaml         auth token Secret, SOPS-encrypted
   .sops.yaml              which files get encrypted and with which key
+  tests/                  unit tests with fake API objects, no cluster needed
+  .github/                CI workflow and Dependabot config
 
 
 Run locally with Claude Code (stdio)
@@ -100,6 +112,10 @@ Known limitations
 
   No TLS in the server. Fine behind port-forward, not for anything exposed.
 
+  NetworkPolicy needs a CNI that enforces it. Default minikube does not, so on minikube
+  the policy is accepted but has no effect; start minikube with --cni=calico to test it.
+  On EKS, set networkPolicy.apiServer to the cluster endpoint addresses.
+
   The ClusterRole can read pods and events in every namespace, kube-system included.
   Swap it for per-namespace Roles if the scope must be narrower.
 
@@ -115,4 +131,4 @@ Roadmap
   the cluster holds static AWS keys.
   GitOps with ArgoCD and KSOPS, so decryption happens in the cluster instead of on a
   laptop.
-  CI: image build, Trivy scan and digest pinning in GitHub Actions.
+  Push the image to a registry from CI and deploy it by digest.
