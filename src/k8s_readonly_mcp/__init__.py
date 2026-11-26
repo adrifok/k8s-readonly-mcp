@@ -1,3 +1,7 @@
+import hmac
+import os
+
+import uvicorn
 from kubernetes import client, config
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
@@ -74,9 +78,32 @@ def list_events(namespace: str = "default", warnings_only: bool = False, limit: 
     ]
 
 
+def require_token(app, token: str):
+    """Reject HTTP requests without the expected bearer token."""
+    expected = f"Bearer {token}".encode()
+
+    async def wrapped(scope, receive, send):
+        if scope["type"] == "http":
+            got = dict(scope["headers"]).get(b"authorization", b"")
+            if not hmac.compare_digest(got, expected):
+                await send({"type": "http.response.start", "status": 401, "headers": [(b"www-authenticate", b"Bearer")]})
+                await send({"type": "http.response.body", "body": b"unauthorized"})
+                return
+        await app(scope, receive, send)  # lifespan events pass through untouched
+
+    return wrapped
+
+
 def main() -> None:
     try:
         config.load_incluster_config()  # ServiceAccount token when running inside a pod
     except config.ConfigException:
         config.load_kube_config()
-    mcp.run()
+    if os.getenv("MCP_TRANSPORT", "stdio") != "http":
+        mcp.run()
+        return
+    token = os.environ.get("MCP_AUTH_TOKEN")
+    if not token:
+        raise SystemExit("MCP_AUTH_TOKEN is required for http transport")
+    app = mcp.streamable_http_app(stateless_http=True, json_response=True, host="0.0.0.0")
+    uvicorn.run(require_token(app, token), host="0.0.0.0", port=int(os.getenv("PORT", "8000")))
